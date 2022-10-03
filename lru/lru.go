@@ -1,6 +1,8 @@
 package lru
 
-import "container/list"
+import (
+	"container/list"
+)
 
 type Cache struct {
 	// 允许最大内存空间，0表示不限制  单位字节
@@ -9,17 +11,17 @@ type Cache struct {
 	size      int
 	list      *list.List
 	cache     map[string]*list.Element
-	OnEvicted onEvictedFunc
+	OnEvicted OnEvictedFunc
 }
 
-type onEvictedFunc func(key string, value string)
+// type OnEvictedFunc func(key string, value string)
 
 type entry struct {
 	key   string
 	value string
 }
 
-func New(maxSize int, onEvicted onEvictedFunc) *Cache {
+func New(maxSize int, onEvicted OnEvictedFunc) *Cache {
 	return &Cache{
 		maxSize:   maxSize,
 		size:      0,
