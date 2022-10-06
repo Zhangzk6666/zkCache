@@ -29,7 +29,7 @@ func (n *NodePool) PickRealNode(key string) (string, bool) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 	if peer := n.coreMap.Get(key); peer != "" && peer != n.url {
-		n.Log("Pick peer %s", peer)
+		n.Log("Pick node %s", peer)
 		return peer, true
 	}
 	return "", false

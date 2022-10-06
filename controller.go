@@ -69,7 +69,6 @@ func (c *Controller) CancelSubscribe(key string) {
 // get all sub
 func (c *Controller) PublicTopicMsg(topicName, msg string) {
 	cache := c.cache.getAll()
-	fmt.Println("cache len, ", len(cache))
 	for k, v := range cache {
 		if v == topicName {
 			go func(k string) {
