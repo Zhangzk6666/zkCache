@@ -6,8 +6,9 @@ import (
 	"log"
 	"net/http"
 	"sync"
-	"zkCache/lru"
-	"zkCache/singleflight"
+
+	"github.com/Zhangzk6666/zkCache/lru"
+	"github.com/Zhangzk6666/zkCache/singleflight"
 )
 
 type Controller struct {

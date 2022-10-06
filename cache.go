@@ -3,7 +3,8 @@ package zkcache
 import (
 	"fmt"
 	"sync"
-	"zkCache/lru"
+
+	"github.com/Zhangzk6666/zkCache/lru"
 )
 
 type synCache struct {

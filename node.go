@@ -8,7 +8,8 @@ import (
 	"net/url"
 	"strings"
 	"sync"
-	"zkCache/consistenthash"
+
+	"github.com/Zhangzk6666/zkCache/consistenthash"
 )
 
 const (
