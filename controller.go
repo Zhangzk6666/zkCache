@@ -129,7 +129,7 @@ func (c *Controller) getLocalhost(key string) ([]byte, error) {
 	}
 	log.Println("search [DB] success ,hit ...")
 	c.cache.set(key, value)
-	return []byte(value), nil
+	return []byte(value + "\n"), nil
 
 }
 
