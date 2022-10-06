@@ -14,7 +14,7 @@ type Cache struct {
 	OnEvicted OnEvictedFunc
 }
 
-// type OnEvictedFunc func(key string, value string)
+type OnEvictedFunc func(key string, value string)
 
 type entry struct {
 	key   string
@@ -43,6 +43,19 @@ func (c *Cache) Get(key string) (value string, ok bool) {
 		return kv.value, true
 	}
 	return
+}
+func (c *Cache) GetAll() map[string]string {
+	copy := make(map[string]string)
+	for k, v := range c.cache {
+		copy[k] = v.Value.(*entry).value
+	}
+	return copy
+}
+
+func (c *Cache) Remove(key string) {
+	if _, ok := c.Get(key); ok {
+		delete(c.cache, key)
+	}
 }
 
 func (c *Cache) Set(key string, value string) {
