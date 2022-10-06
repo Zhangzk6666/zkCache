@@ -63,8 +63,6 @@ func (c *Controller) Subscribe(key, value string) {
 	c.cache.set(key, value)
 }
 func (c *Controller) CancelSubscribe(key string) {
-	fmt.Println("@@@@@@@@@!!!133311")
-
 	c.cache.remove(key)
 }
 
@@ -73,8 +71,6 @@ func (c *Controller) PublicTopicMsg(topicName, msg string) {
 	cache := c.cache.getAll()
 	fmt.Println("cache len, ", len(cache))
 	for k, v := range cache {
-
-		fmt.Println(k, "@", v)
 		if v == topicName {
 			go func(k string) {
 				_, err := http.Get(k + "/topicCall/" + topicName + "/" + msg)
