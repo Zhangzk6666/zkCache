@@ -53,7 +53,10 @@ func (c *Cache) GetAll() map[string]string {
 }
 
 func (c *Cache) Remove(key string) {
-	if _, ok := c.Get(key); ok {
+	if ele, ok := c.cache[key]; ok {
+		value := ele.Value.(*entry).value
+		c.size -= (len(value) + len(key))
+		c.list.Remove(ele)
 		delete(c.cache, key)
 	}
 }
@@ -64,14 +67,14 @@ func (c *Cache) Set(key string, value string) {
 		kv := ele.Value.(*entry)
 		c.size += (len(value) - len(kv.value))
 		kv.value = value
+	} else {
+		ele := c.list.PushFront(&entry{
+			key:   key,
+			value: value,
+		})
+		c.cache[key] = ele
+		c.size += (len(key) + len(value))
 	}
-
-	ele := c.list.PushFront(&entry{
-		key:   key,
-		value: value,
-	})
-	c.cache[key] = ele
-	c.size += (len(key) + len(value))
 	// 新添加 || 更新 都有可能触发
 	for c.maxSize != 0 && c.maxSize < c.size {
 		c.removeBack()
