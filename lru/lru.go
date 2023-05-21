@@ -8,9 +8,10 @@ type Cache struct {
 	// 允许最大内存空间，0表示不限制  单位字节
 	maxSize int
 	// 当前占用内存空间 单位字节
-	size      int
-	list      *list.List
-	cache     map[string]*list.Element
+	size  int
+	list  *list.List
+	cache map[string]*list.Element
+	// 被删除时触发
 	OnEvicted OnEvictedFunc
 }
 

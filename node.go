@@ -8,8 +8,6 @@ import (
 	"net/url"
 	"strings"
 	"sync"
-
-	"github.com/Zhangzk6666/zkCache/consistenthash"
 )
 
 const (
@@ -21,27 +19,32 @@ type NodePool struct {
 	url     string
 	coreUrl string
 	mu      sync.Mutex
-	coreMap *consistenthash.Map
+	// coreMap *consistenthash.Map
 }
 
-// 选择真实节点
-func (n *NodePool) PickRealNode(key string) (string, bool) {
-	n.mu.Lock()
-	defer n.mu.Unlock()
-	if peer := n.coreMap.Get(key); peer != "" && peer != n.url {
-		n.Log("Pick node %s", peer)
-		return peer, true
-	}
-	return "", false
-}
+// // 选择真实节点
+// func (n *NodePool) PickRealNode(key string) (string, bool) {
+// 	n.mu.Lock()
+// 	defer n.mu.Unlock()
+// 	if peer := n.coreMap.Get(key); peer != "" && peer != n.url {
+// 		n.Log("Pick node %s", peer)
+// 		return peer, true
+// 	}
+// 	return "", false
+// }
 
 func (h *NodePool) Get(baseUrl string, group string, key string) ([]byte, error) {
+
+	fmt.Println("baseUrl: ", baseUrl, ".............")
+	fmt.Println("h.coreUrl: ", h.coreUrl, ".............")
 	u := fmt.Sprintf(
-		"%v%v/%v",
-		baseUrl+h.coreUrl,
+		"%v%v%v/%v",
+		baseUrl,
+		h.coreUrl,
 		url.QueryEscape(group),
 		url.QueryEscape(key),
 	)
+	fmt.Println("u: ", u, ".............")
 	res, err := http.Get(u)
 	if err != nil {
 		return nil, err
@@ -126,9 +129,9 @@ func (n *NodePool) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("\n"))
 }
 
-func (n *NodePool) Set(addrs ...string) {
-	n.mu.Lock()
-	defer n.mu.Unlock()
-	n.coreMap = consistenthash.New(defaultVirtualNodeCount, nil)
-	n.coreMap.Set(addrs...)
-}
+// func (n *NodePool) Set(addrs ...string) {
+// 	n.mu.Lock()
+// 	defer n.mu.Unlock()
+// 	n.coreMap = consistenthash.New(defaultVirtualNodeCount, nil)
+// 	n.coreMap.Set(addrs...)
+// }

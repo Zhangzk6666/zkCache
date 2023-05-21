@@ -4,11 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"net/http"
 	"sync"
-
-	"github.com/Zhangzk6666/zkCache/lru"
-	"github.com/Zhangzk6666/zkCache/singleflight"
+	"zkCache/lru"
+	"zkCache/registry"
+	"zkCache/service"
+	"zkCache/singleflight"
 )
 
 type Controller struct {
@@ -33,10 +33,11 @@ func NewController(name string, maxSize int, get Get, onEvicted lru.OnEvictedFun
 		panic("controller name exist")
 	}
 	c := &Controller{
-		name:   name,
-		get:    get,
-		cache:  NewCache(maxSize, onEvicted),
-		loader: &singleflight.Group{},
+		name:     name,
+		get:      get,
+		nodePool: &NodePool{},
+		cache:    NewCache(maxSize, onEvicted),
+		loader:   &singleflight.Group{},
 	}
 	controller[name] = c
 	return c
@@ -52,36 +53,36 @@ func GetController(name string) (*Controller, bool) {
 }
 
 // topic
-func (c *Controller) SetTopic(key string) {
-	if _, ok := c.cache.get(key); !ok {
-		c.cache.set(key, "")
-	}
-}
+// func (c *Controller) SetTopic(key string) {
+// 	if _, ok := c.cache.get(key); !ok {
+// 		c.cache.set(key, "")
+// 	}
+// }
 
 // topic
-func (c *Controller) Subscribe(key, value string) {
-	c.cache.set(key, value)
-}
-func (c *Controller) CancelSubscribe(key string) {
-	c.cache.remove(key)
-}
+// func (c *Controller) Subscribe(key, value string) {
+// 	c.cache.set(key, value)
+// }
+// func (c *Controller) CancelSubscribe(key string) {
+// 	c.cache.remove(key)
+// }
 
 // get all sub
-func (c *Controller) PublicTopicMsg(topicName, msg string) {
-	cache := c.cache.getAll()
-	for k, v := range cache {
-		if v == topicName {
-			go func(k string) {
-				_, err := http.Get(k + "/topicCall/" + topicName + "/" + msg)
-				if err != nil {
-					log.Fatal(err.Error())
-					return
-				}
-			}(k)
-		}
-	}
+// func (c *Controller) PublicTopicMsg(topicName, msg string) {
+// 	cache := c.cache.getAll()
+// 	for k, v := range cache {
+// 		if v == topicName {
+// 			go func(k string) {
+// 				_, err := http.Get(k + "/topicCall/" + topicName + "/" + msg)
+// 				if err != nil {
+// 					log.Fatal(err.Error())
+// 					return
+// 				}
+// 			}(k)
+// 		}
+// 	}
 
-}
+// }
 func (c *Controller) Get(key string) ([]byte, error) {
 	if key == "" {
 		return nil, fmt.Errorf("key not exist")
@@ -94,14 +95,16 @@ func (c *Controller) Get(key string) ([]byte, error) {
 	return c.load(key)
 }
 
+var serviceName = registry.ServiceName("cache")
+
 func (c *Controller) load(key string) ([]byte, error) {
 	viewi, err := c.loader.Do(key, func() ([]byte, error) {
-		if c.nodePool != nil {
-			if realNode, ok := c.nodePool.PickRealNode(key); ok {
-				if value, err := c.getFromPeer(realNode, key); err == nil {
-					return value, nil
-				}
-				log.Println("[zkCache] Failed to get from realNode: " + realNode)
+		if reliableUrl, err := service.GetService(serviceName); err != nil {
+			fmt.Println("err: ", err)
+			return nil, err
+		} else {
+			if value, err := c.getFromPeer(reliableUrl, key); err == nil {
+				return value, nil
 			}
 		}
 		return c.getLocalhost(key)
@@ -120,6 +123,7 @@ func (c *Controller) getFromPeer(baseUrl string, key string) ([]byte, error) {
 		return value, nil
 	}
 }
+
 func (c *Controller) getLocalhost(key string) ([]byte, error) {
 	value, err := c.get(key)
 	if err != nil {
@@ -128,8 +132,7 @@ func (c *Controller) getLocalhost(key string) ([]byte, error) {
 	}
 	log.Println("search [DB] success ,hit ...")
 	c.cache.set(key, value)
-	return []byte(value + "\n"), nil
-
+	return []byte(value), nil
 }
 
 func (c *Controller) RegisterPeers(nodePool *NodePool) {

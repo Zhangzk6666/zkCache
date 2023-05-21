@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/signal"
 	"testing"
-	"time"
 )
 
 var db = map[string]string{
@@ -46,23 +45,23 @@ func TestTopic(t *testing.T) {
 
 	go func() {
 
-		addr := "http://localhost:9999"
-		// topic
-		topic := NewController("topic", 0, nil, nil)
-		// subscribe
-		subscribe := NewController("subscribe", 0, nil, nil)
+		// addr := "http://localhost:9999"
+		// // topic
+		// topic := NewController("topic", 0, nil, nil)
+		// // subscribe
+		// subscribe := NewController("subscribe", 0, nil, nil)
 
-		time.Sleep(4 * time.Second)
-		topic.SetTopic("topicName")
-		subscribe.Subscribe(addr, "topicName")
-		subscribe.PublicTopicMsg("topicName", "msg")
+		// time.Sleep(4 * time.Second)
+		// topic.SetTopic("topicName")
+		// subscribe.Subscribe(addr, "topicName")
+		// subscribe.PublicTopicMsg("topicName", "msg")
 	}()
 
 	go func() {
 		addr := "http://localhost:9999"
 		zkCache := NewController("test", 0, nil, nil)
 		nodePool := NewNodePool(addr)
-		nodePool.Set(addr)
+		// nodePool.Set(addr)
 		zkCache.RegisterPeers(nodePool)
 		log.Println("zkCache is running at", addr)
 		log.Fatal(http.ListenAndServe(addr[7:], nodePool))
