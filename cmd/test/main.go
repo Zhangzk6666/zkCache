@@ -36,11 +36,11 @@ func createGroup() *zkcache.Controller {
 	}, nil)
 }
 
-func getKeyService(router *gin.Engine) {
-	gee := createGroup()
+func getKeyService(router *gin.Engine, controller *zkcache.Controller) {
+	// gee := createGroup()
 	router.GET("/api", func(ctx *gin.Context) {
 		key, _ := ctx.GetQuery("key")
-		view, err := gee.Get(key)
+		view, err := controller.Get(key)
 		if err != nil {
 			response.ResponseMsg.FailResponse(ctx, response.NewErrWithMsg(http.StatusInternalServerError, "服务器错误!"), nil)
 			return
@@ -74,6 +74,7 @@ func main() {
 		port,
 		reg,
 		getKeyService,
+		createGroup,
 	)
 
 	if err != nil {

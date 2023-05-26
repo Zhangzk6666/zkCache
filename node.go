@@ -16,16 +16,31 @@ const (
 )
 
 type NodePool struct {
+	// 本地当前节点,用于区分远程节点
 	url     string
 	coreUrl string
 	mu      sync.Mutex
 	// coreMap *consistenthash.Map
+	// 存放所有节点,包含本地节点 || 顺序按照hash圆环的顺序,通过定位本地节点来确定遍历的顺序
+	nodes []string
 }
 
 // // 选择真实节点
 // func (n *NodePool) PickRealNode(key string) (string, bool) {
 // 	n.mu.Lock()
 // 	defer n.mu.Unlock()
+// 	if peer := n.coreMap.Get(key); peer != "" && peer != n.url {
+// 		n.Log("Pick node %s", peer)
+// 		return peer, true
+// 	}
+// 	return "", false
+// }
+
+// // 选择真实节点
+// func (n *NodePool) PickFormPool(key string) (string, bool) {
+// 	n.mu.Lock()
+// 	defer n.mu.Unlock()
+
 // 	if peer := n.coreMap.Get(key); peer != "" && peer != n.url {
 // 		n.Log("Pick node %s", peer)
 // 		return peer, true

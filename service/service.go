@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	zkcache "zkCache"
 	"zkCache/pkg/response"
 	"zkCache/registry"
 
@@ -27,8 +28,10 @@ import (
 
 // 启动服务并注册
 func Start(ctx context.Context, host string, port int,
-	reg registry.RegistrationVO, routerFunc func(router *gin.Engine)) (context.Context, error) {
-	ctx = startService(ctx, reg.ServiceName, host, port, routerFunc)
+	reg registry.RegistrationVO,
+	routerFunc func(router *gin.Engine, controller *zkcache.Controller),
+	createGroup func() *zkcache.Controller) (context.Context, error) {
+	ctx = startService(ctx, reg.ServiceName, host, port, routerFunc, createGroup)
 	err := registry.RegisterService(reg)
 	if err != nil {
 		return ctx, err
@@ -36,11 +39,14 @@ func Start(ctx context.Context, host string, port int,
 	return ctx, nil
 }
 
-func startService(ctx context.Context, serviceName registry.ServiceName, host string, port int, routerFunc func(router *gin.Engine)) context.Context {
+func startService(ctx context.Context, serviceName registry.ServiceName,
+	host string, port int, routerFunc func(router *gin.Engine, controller *zkcache.Controller),
+	createGroup func() *zkcache.Controller) context.Context {
 	ctx, cancel := context.WithCancel(ctx)
 	router := gin.New()
-	healthyService(router)
-	routerFunc(router)
+	controller := createGroup()
+	baseService(router, controller)
+	routerFunc(router, controller)
 	srv := &http.Server{
 		Addr:           fmt.Sprintf("%s:%d", host, port),
 		Handler:        router,
@@ -68,10 +74,23 @@ func startService(ctx context.Context, serviceName registry.ServiceName, host st
 	return ctx
 }
 
-func healthyService(router *gin.Engine) {
+func baseService(router *gin.Engine, controller *zkcache.Controller) {
 	router.GET("/healthy", func(ctx *gin.Context) {
 		response.ResponseMsg.SuccessResponse(ctx, nil)
 	})
+	router.GET("/updateNodePool", func(ctx *gin.Context) {
+		urls := NodePoolMsg{}
+		if err := ctx.ShouldBindJSON(&urls); err != nil {
+			log.Println(err)
+		}
+		log.Println("urls.....", urls.Urls)
+		controller.UpdateNodePool(urls.Urls)
+		response.ResponseMsg.SuccessResponse(ctx, nil)
+	})
+}
+
+type NodePoolMsg struct {
+	Urls []string `json:"urls"`
 }
 
 // 获取服务

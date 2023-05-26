@@ -14,6 +14,7 @@ type Group struct {
 	m  map[string]*call
 }
 
+// 从其他节点获取对应的结果,如果没有就下一个,直到全部节点都访问完
 func (g *Group) Do(key string, fn func() ([]byte, error)) ([]byte, error) {
 	g.mu.Lock()
 	if g.m == nil {

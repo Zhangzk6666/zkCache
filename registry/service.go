@@ -1,8 +1,12 @@
 package registry
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"log"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 	"zkCache/consistenthash"
@@ -25,7 +29,6 @@ type registry struct {
 	mutex        *sync.RWMutex
 	virtualNode  map[ServiceName]*consistenthash.Map
 	// 负载均衡
-	// 心跳检测
 	// Notify 当注册中心易主后通知所有服务
 }
 
@@ -117,6 +120,7 @@ func (r *registry) add(reg RegistrationVO) error {
 		r.virtualNode[serviceName] = consistenthash.New(5, nil)
 	}
 	r.virtualNode[serviceName].Set(serviceUrl)
+	go updateNodesMsg(serviceName)
 	return nil
 }
 func (r *registry) remove(reg RegistrationVO) error {
@@ -129,6 +133,7 @@ func (r *registry) remove(reg RegistrationVO) error {
 			if r.registration[serviceName][i] == serviceUrl {
 				r.registration[serviceName] = append(r.registration[serviceName][:i], r.registration[serviceName][i+1:]...)
 				selfReg.virtualNode[serviceName].RemoveNodeByUrl(serviceUrl)
+				go updateNodesMsg(serviceName)
 				return nil
 			}
 		}
@@ -196,6 +201,48 @@ func removeUrls(removeUrlsMap map[ServiceName][]string) {
 			})
 			selfReg.virtualNode[serviceName].RemoveNodeByUrl(url)
 		}
+		go updateNodesMsg(serviceName)
+	}
+
+}
+
+// TODO
+func updateNodesMsg(serviceName ServiceName) {
+	urls := selfReg.virtualNode[serviceName].GetUrlsSortByKey()
+	fmt.Println(urls)
+	for _, url := range urls {
+		data := make(map[string][]string)
+		data["urls"] = urls
+		jsonData, err := json.Marshal(data)
+		if err != nil {
+			log.Println(err)
+		}
+		log.Println(string(jsonData))
+		// TODO http req
+		// url := "http://url"  || 目标节点
+		method := "GET"
+		payload := strings.NewReader(string(jsonData))
+		client := &http.Client{}
+		req, err := http.NewRequest(method, url+"/updateNodePool", payload)
+
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		req.Header.Add("Content-Type", "application/json")
+		res, err := client.Do(req)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		defer res.Body.Close()
+
+		body, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		fmt.Println(string(body))
 	}
 
 }

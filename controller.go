@@ -7,7 +7,6 @@ import (
 	"sync"
 	"zkCache/lru"
 	"zkCache/registry"
-	"zkCache/service"
 	"zkCache/singleflight"
 )
 
@@ -95,27 +94,75 @@ func (c *Controller) Get(key string) ([]byte, error) {
 	return c.load(key)
 }
 
+func (c *Controller) UpdateNodePool(nodes []string) {
+	// TODO update
+	c.nodePool.nodes = nodes
+}
+
 var serviceName = registry.ServiceName("cache")
 
 func (c *Controller) load(key string) ([]byte, error) {
-	viewi, err := c.loader.Do(key, func() ([]byte, error) {
-		if reliableUrl, err := service.GetService(serviceName); err != nil {
-			fmt.Println("err: ", err)
-			return nil, err
-		} else {
-			if value, err := c.getFromPeer(reliableUrl, key); err == nil {
+	c.nodePool.mu.Lock()
+	defer c.nodePool.mu.Unlock()
+	localNode := 0
+	for i := 0; i < len(c.nodePool.nodes); i++ {
+		if c.nodePool.url == c.nodePool.nodes[i] {
+			localNode = i
+			break
+		}
+	}
+	remoteNode := localNode + 1
+	for remoteNode != localNode {
+		if remoteNode > len(c.nodePool.nodes) {
+			remoteNode = 0
+		}
+		remoteUrl := c.nodePool.nodes[remoteNode]
+		viewi, err := c.loader.Do(key, func() ([]byte, error) {
+			log.Println(remoteUrl)
+			if value, err := c.getFromPeer(remoteUrl, key); err != nil {
+				return nil, err
+			} else {
 				return value, nil
 			}
+		})
+		if err != nil {
+			// 忽略错误 继续循环
+			log.Println("[getRemoteUrlErr -> 可能是节点突然挂了] err: ", err)
+		} else {
+			return viewi, nil
 		}
-		return c.getLocalhost(key)
-	})
-
-	if err == nil {
-		return viewi, nil
+		remoteNode++
 	}
-	return nil, errors.New("can not find the value by key: " + key)
+	// 如果所有节点都不存在->访问设定的DB
+	data, err := c.getLocalhost(key)
+	if err != nil {
+		log.Println(err)
+		return nil, errors.New("can not find the value by key: " + key)
+	}
+	return data, nil
+
+	// viewi, err := c.loader.Do(key, func() ([]byte, error) {
+	// 	// 应该从本地的pool中获取
+	// 	PickFormPool
+	// 	c.nodePool.coreUrl
+	// 	if reliableUrl, err := service.GetService(serviceName); err != nil {
+	// 		fmt.Println("err: ", err)
+	// 		return nil, err
+	// 	} else {
+	// 		if value, err := c.getFromPeer(reliableUrl, key); err == nil {
+	// 			return value, nil
+	// 		}
+	// 	}
+	// 	return c.getLocalhost(key)
+	// })
+	// if err == nil {
+	// 	return viewi, nil
+	// }
+
+	// return nil, errors.New("can not find the value by key: " + key)
 }
 
+// 向远程发起请求
 func (c *Controller) getFromPeer(baseUrl string, key string) ([]byte, error) {
 	if value, err := c.nodePool.Get(baseUrl, c.name, key); err != nil {
 		return nil, err
@@ -124,7 +171,9 @@ func (c *Controller) getFromPeer(baseUrl string, key string) ([]byte, error) {
 	}
 }
 
+// 按照设定的规则->search DB
 func (c *Controller) getLocalhost(key string) ([]byte, error) {
+	log.Println("try to search DB")
 	value, err := c.get(key)
 	if err != nil {
 		log.Println("search [DB] fail ,not hit ...")
@@ -135,6 +184,6 @@ func (c *Controller) getLocalhost(key string) ([]byte, error) {
 	return []byte(value), nil
 }
 
-func (c *Controller) RegisterPeers(nodePool *NodePool) {
-	c.nodePool = nodePool
-}
+// func (c *Controller) RegisterPeers(nodePool *NodePool) {
+// 	c.nodePool = nodePool
+// }

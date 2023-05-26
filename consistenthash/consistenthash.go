@@ -16,6 +16,7 @@ type Map struct {
 	keys             Int64Slice
 	hashMap          map[int64]string
 	mu               sync.RWMutex
+	nodes            []string // 用于推送  || 确定顺序
 }
 
 type Int64Slice []int64
@@ -100,4 +101,19 @@ func (m *Map) RemoveNodeByUrl(targetUrl string) {
 			}
 		}
 	}
+}
+
+func (m *Map) GetUrlsSortByKey() []string {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	urls := make([]string, 0)
+	set := make(map[string]struct{}, 0)
+	for _, key := range m.keys {
+		val := m.hashMap[key]
+		if _, ok := set[val]; !ok {
+			urls = append(urls, val)
+			set[val] = struct{}{}
+		}
+	}
+	return urls
 }

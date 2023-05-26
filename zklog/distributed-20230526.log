@@ -1,0 +1,61 @@
+{"level":"info","msg":"Request received","time":"2023-05-26 15:20:13"}
+{"ServiceName":"cache","ServiceURL":"http://localhost:8881","level":"info","msg":"Adding service:","time":"2023-05-26 15:20:19"}
+{"ServiceName":"cache","ServiceURL":"http://localhost:8882","level":"info","msg":"Adding service:","time":"2023-05-26 15:20:28"}
+{"ServiceName":"cache","ServiceURL":"http://localhost:8883","level":"info","msg":"Adding service:","time":"2023-05-26 15:20:34"}
+{"level":"info","msg":"Remove service at URL:http://localhost:8881","time":"2023-05-26 15:23:22"}
+{"level":"info","msg":"Remove service at URL:http://localhost:8883","time":"2023-05-26 15:23:23"}
+{"level":"info","msg":"Remove service at URL:http://localhost:8882","time":"2023-05-26 15:23:24"}
+{"level":"info","msg":"Request received","time":"2023-05-26 15:23:27"}
+{"ServiceName":"cache","ServiceURL":"http://localhost:8881","level":"info","msg":"Adding service:","time":"2023-05-26 15:23:29"}
+{"level":"info","msg":"Request received","time":"2023-05-26 15:23:35"}
+{"level":"info","msg":"Remove service at URL:http://localhost:8881","time":"2023-05-26 15:23:38"}
+{"level":"error","msg":"Not found serviceName: cache ,not found URL: http://localhost:8881","time":"2023-05-26 15:23:38"}
+{"ServiceName":"cache","ServiceURL":"http://localhost:8881","level":"info","msg":"Adding service:","time":"2023-05-26 15:23:41"}
+{"level":"info","msg":"Request received","time":"2023-05-26 15:27:33"}
+{"ServiceName":"cache","ServiceURL":"http://localhost:8881","level":"info","msg":"Adding service:","time":"2023-05-26 15:27:36"}
+{"level":"info","msg":"Request received","time":"2023-05-26 15:28:25"}
+{"level":"info","msg":"Remove service at URL:http://localhost:8881","time":"2023-05-26 15:28:26"}
+{"level":"error","msg":"Not found serviceName: cache ,not found URL: http://localhost:8881","time":"2023-05-26 15:28:26"}
+{"ServiceName":"cache","ServiceURL":"http://localhost:8881","level":"info","msg":"Adding service:","time":"2023-05-26 15:28:29"}
+{"level":"info","msg":"Remove service at URL:http://localhost:8881","time":"2023-05-26 15:28:31"}
+{"ServiceName":"cache","ServiceURL":"http://localhost:8881","level":"info","msg":"Adding service:","time":"2023-05-26 15:28:33"}
+{"ServiceName":"cache","ServiceURL":"http://localhost:8882","level":"info","msg":"Adding service:","time":"2023-05-26 15:28:39"}
+{"level":"info","msg":"Remove service at URL:http://localhost:8881","time":"2023-05-26 15:29:21"}
+{"level":"info","msg":"Remove service at URL:http://localhost:8882","time":"2023-05-26 15:29:22"}
+{"level":"info","msg":"Request received","time":"2023-05-26 15:29:26"}
+{"ServiceName":"cache","ServiceURL":"http://localhost:8881","level":"info","msg":"Adding service:","time":"2023-05-26 15:29:28"}
+{"ServiceName":"cache","ServiceURL":"http://localhost:8882","level":"info","msg":"Adding service:","time":"2023-05-26 15:29:34"}
+{"level":"info","msg":"Remove service at URL:http://localhost:8881","time":"2023-05-26 15:31:40"}
+{"level":"info","msg":"Remove service at URL:http://localhost:8882","time":"2023-05-26 15:31:41"}
+{"level":"info","msg":"Request received","time":"2023-05-26 15:31:44"}
+{"ServiceName":"cache","ServiceURL":"http://localhost:8881","level":"info","msg":"Adding service:","time":"2023-05-26 15:31:46"}
+{"ServiceName":"cache","ServiceURL":"http://localhost:8882","level":"info","msg":"Adding service:","time":"2023-05-26 15:31:50"}
+{"level":"info","msg":"Remove service at URL:http://localhost:8881","time":"2023-05-26 15:33:31"}
+{"ServiceName":"cache","ServiceURL":"http://localhost:8881","level":"info","msg":"Adding service:","time":"2023-05-26 15:33:33"}
+{"level":"info","msg":"Remove service at URL:http://localhost:8881","time":"2023-05-26 15:33:44"}
+{"ServiceName":"cache","ServiceURL":"http://localhost:8881","level":"info","msg":"Adding service:","time":"2023-05-26 15:33:47"}
+{"level":"info","msg":"Remove service at URL:http://localhost:8882","time":"2023-05-26 15:36:57"}
+{"ServiceName":"cache","ServiceURL":"http://localhost:8882","level":"info","msg":"Adding service:","time":"2023-05-26 15:36:59"}
+{"level":"info","msg":"Remove service at URL:http://localhost:8881","time":"2023-05-26 15:37:59"}
+{"level":"info","msg":"Remove service at URL:http://localhost:8882","time":"2023-05-26 15:38:03"}
+{"ServiceName":"cache","ServiceURL":"http://localhost:8881","level":"info","msg":"Adding service:","time":"2023-05-26 15:38:08"}
+{"ServiceName":"cache","ServiceURL":"http://localhost:8882","level":"info","msg":"Adding service:","time":"2023-05-26 15:38:10"}
+{"level":"info","msg":"Remove service at URL:http://localhost:8881","time":"2023-05-26 15:42:41"}
+{"level":"info","msg":"Remove service at URL:http://localhost:8882","time":"2023-05-26 15:42:42"}
+{"level":"info","msg":"Request received","time":"2023-05-26 15:42:45"}
+{"ServiceName":"cache","ServiceURL":"http://localhost:8881","level":"info","msg":"Adding service:","time":"2023-05-26 15:42:47"}
+{"ServiceName":"cache","ServiceURL":"http://localhost:8882","level":"info","msg":"Adding service:","time":"2023-05-26 15:42:50"}
+{"level":"info","msg":"Remove service at URL:http://localhost:8881","time":"2023-05-26 15:42:55"}
+{"ServiceName":"cache","ServiceURL":"http://localhost:8881","level":"info","msg":"Adding service:","time":"2023-05-26 15:43:32"}
+{"level":"info","msg":"Remove service at URL:http://localhost:8881","time":"2023-05-26 15:43:33"}
+{"ServiceName":"cache","ServiceURL":"http://localhost:8881","level":"info","msg":"Adding service:","time":"2023-05-26 15:43:35"}
+{"level":"info","msg":"Remove service at URL:http://localhost:8881","time":"2023-05-26 15:43:37"}
+{"ServiceName":"cache","ServiceURL":"http://localhost:8881","level":"info","msg":"Adding service:","time":"2023-05-26 15:45:01"}
+{"level":"info","msg":"Request received","time":"2023-05-26 15:45:10"}
+{"ServiceName":"cache","ServiceURL":"http://localhost:8883","level":"info","msg":"Adding service:","time":"2023-05-26 15:45:35"}
+{"level":"info","msg":"Remove service at URL:http://localhost:8881","time":"2023-05-26 15:45:39"}
+{"ServiceName":"cache","ServiceURL":"http://localhost:8881","level":"info","msg":"Adding service:","time":"2023-05-26 15:45:42"}
+{"level":"info","msg":"Remove service at URL:http://localhost:8883","time":"2023-05-26 15:45:43"}
+{"ServiceName":"cache","ServiceURL":"http://localhost:8883","level":"info","msg":"Adding service:","time":"2023-05-26 15:45:44"}
+{"level":"info","msg":"Remove service at URL:http://localhost:8882","time":"2023-05-26 15:45:48"}
+{"ServiceName":"cache","ServiceURL":"http://localhost:8882","level":"info","msg":"Adding service:","time":"2023-05-26 15:45:50"}
