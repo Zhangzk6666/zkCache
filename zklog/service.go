@@ -3,6 +3,7 @@ package zklog
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"path"
 	"strings"
 	"time"
@@ -65,6 +66,10 @@ func (std *stdFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 func init() {
 	logFilePath := "logs"
 	logFileName := "distributed"
+	err := os.MkdirAll(logFilePath, 0777)
+	if err != nil {
+		panic(err)
+	}
 	// 日志文件
 	fileName := path.Join(logFilePath, logFileName)
 
