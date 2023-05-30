@@ -1,7 +1,6 @@
 package valid
 
 import (
-	"fmt"
 	"zkCache/pkg/response"
 
 	"github.com/go-playground/locales/zh"
@@ -33,7 +32,6 @@ func (this verification) Verify(value ...interface{}) error {
 			for _, errMsg := range err.(validator.ValidationErrors) {
 				data = append(data, errMsg.Translate(trans))
 			}
-			fmt.Println(data)
 			return response.NewErr(response.PARAMETER_ERROR)
 		}
 	}

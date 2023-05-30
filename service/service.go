@@ -5,32 +5,27 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	zkcache "zkCache"
 	"zkCache/pkg/response"
 	"zkCache/registry"
+	"zkCache/zklog"
 
 	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
 )
-
-// func startCacheServer(addr string, addrs []string, gee *zkcache.Controller) {
-// 	nodePool := zkcache.NewNodePool(addr)
-// 	nodePool.Set(addrs...)
-// 	gee.RegisterPeers(nodePool)
-// 	log.Println("zkCache is running at", addr)
-// 	log.Fatal(http.ListenAndServe(addr[7:], nodePool))
-// }
 
 // 启动服务并注册
 func Start(ctx context.Context, host string, port int,
 	reg registry.RegistrationVO,
 	routerFunc func(router *gin.Engine, controller *zkcache.Controller),
 	createGroup func() *zkcache.Controller) (context.Context, error) {
+
 	ctx = startService(ctx, reg.ServiceName, host, port, routerFunc, createGroup)
 	err := registry.RegisterService(reg)
 	if err != nil {
@@ -42,9 +37,11 @@ func Start(ctx context.Context, host string, port int,
 func startService(ctx context.Context, serviceName registry.ServiceName,
 	host string, port int, routerFunc func(router *gin.Engine, controller *zkcache.Controller),
 	createGroup func() *zkcache.Controller) context.Context {
+
 	ctx, cancel := context.WithCancel(ctx)
 	router := gin.New()
 	controller := createGroup()
+	controller.SetSelfUrl(fmt.Sprintf("http://%s:%d", host, port))
 	baseService(router, controller)
 	routerFunc(router, controller)
 	srv := &http.Server{
@@ -53,19 +50,16 @@ func startService(ctx context.Context, serviceName registry.ServiceName,
 		MaxHeaderBytes: 1 << 20,
 	}
 	go func() {
-		// addr := fmt.Sprintf("%s:%d", host, port)
-		// nodePool := zkcache.NewNodePool(addr)
-		// nodePool.Set(addrs...)
-		// gee.RegisterPeers(nodePool)
-		log.Println(srv.ListenAndServe())
+		zklog.Logger.WithField("msg", srv.ListenAndServe()).Warn()
 		err := registry.ShutdownService(serviceName, fmt.Sprintf("http://%s:%d", host, port))
 		if err != nil {
-			log.Println(err)
+			zklog.Logger.WithField("err", err).Error()
 		}
 		cancel()
 	}()
 	go func() {
-		log.Printf("%v started. Press use 'Ctrl + c' to stop. \n", serviceName)
+		zklog.Logger.WithField("msg",
+			fmt.Sprintf("%v started. Press use 'Ctrl + c' to stop.", serviceName)).Info()
 		stop := make(chan os.Signal)
 		signal.Notify(stop, os.Interrupt, syscall.SIGTERM, syscall.SIGINT, syscall.SIGKILL)
 		<-stop
@@ -81,9 +75,11 @@ func baseService(router *gin.Engine, controller *zkcache.Controller) {
 	router.GET("/updateNodePool", func(ctx *gin.Context) {
 		urls := NodePoolMsg{}
 		if err := ctx.ShouldBindJSON(&urls); err != nil {
-			log.Println(err)
+			zklog.Logger.WithField("err", err).Error()
 		}
-		log.Println("urls.....", urls.Urls)
+		zklog.Logger.WithFields(logrus.Fields{
+			"urls": strings.Join(urls.Urls, ","),
+		}).Debug()
 		controller.UpdateNodePool(urls.Urls)
 		response.ResponseMsg.SuccessResponse(ctx, nil)
 	})
@@ -101,14 +97,14 @@ func GetService(sericeName registry.ServiceName) (string, error) {
 	req, err := http.NewRequest(method, reqUrl, nil)
 	res, err := client.Do(req)
 	if err != nil {
-		fmt.Println(err)
+		zklog.Logger.WithField("err", err).Error()
 		return "", err
 	}
 	defer res.Body.Close()
 
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		fmt.Println(err)
+		zklog.Logger.WithField("err", err).Error()
 		return "", err
 
 	}

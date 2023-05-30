@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
+	"zkCache/zklog"
 )
 
 func RegisterService(r RegistrationVO) error {
@@ -13,7 +13,7 @@ func RegisterService(r RegistrationVO) error {
 	enc := json.NewEncoder(buf)
 	err := enc.Encode(r)
 	if err != nil {
-		fmt.Println(err)
+		zklog.Logger.WithField("err", err.Error()).Error()
 		return err
 	}
 	res, err := http.Post(
@@ -39,7 +39,7 @@ func ShutdownService(serviceName ServiceName, url string) error {
 	enc := json.NewEncoder(buf)
 	err := enc.Encode(r)
 	if err != nil {
-		log.Println(err)
+		zklog.Logger.WithField("err", err).Error()
 		return err
 	}
 
@@ -49,7 +49,7 @@ func ShutdownService(serviceName ServiceName, url string) error {
 		buf,
 	)
 	if err != nil {
-		log.Println(err)
+		zklog.Logger.WithField("err", err).Error()
 		return err
 	}
 

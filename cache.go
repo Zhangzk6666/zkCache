@@ -1,7 +1,6 @@
 package zkcache
 
 import (
-	"fmt"
 	"sync"
 	"zkCache/lru"
 )
@@ -37,7 +36,5 @@ func (c *synCache) set(key string, value string) {
 func (c *synCache) remove(key string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	fmt.Println("@@@@@@@@@!!!122211")
-
 	c.lru.Remove(key)
 }

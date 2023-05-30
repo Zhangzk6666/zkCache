@@ -1,26 +1,34 @@
 package zkcache
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"sync"
+	"time"
 	"zkCache/lru"
 	"zkCache/registry"
 	"zkCache/singleflight"
+	"zkCache/zklog"
+
+	"github.com/sirupsen/logrus"
 )
 
+type Key string
 type Controller struct {
 	name     string
 	get      Get
 	cache    *synCache
 	nodePool *NodePool
 	loader   *singleflight.Group
+
+	reqRemoteMap map[Key][]int64
 }
 
 var (
-	mu         sync.Mutex
-	controller = make(map[string]*Controller)
+	mu          sync.Mutex
+	controller  = make(map[string]*Controller)
+	serviceName = registry.ServiceName("cache")
 )
 
 type Get func(key string) (string, error)
@@ -37,6 +45,8 @@ func NewController(name string, maxSize int, get Get, onEvicted lru.OnEvictedFun
 		nodePool: &NodePool{},
 		cache:    NewCache(maxSize, onEvicted),
 		loader:   &singleflight.Group{},
+
+		reqRemoteMap: make(map[Key][]int64),
 	}
 	controller[name] = c
 	return c
@@ -51,59 +61,52 @@ func GetController(name string) (*Controller, bool) {
 	return nil, false
 }
 
-// topic
-// func (c *Controller) SetTopic(key string) {
-// 	if _, ok := c.cache.get(key); !ok {
-// 		c.cache.set(key, "")
-// 	}
-// }
+func (c *Controller) UpdateNodePool(nodes []string) {
+	c.nodePool.nodes = nodes
+}
 
-// topic
-// func (c *Controller) Subscribe(key, value string) {
-// 	c.cache.set(key, value)
-// }
-// func (c *Controller) CancelSubscribe(key string) {
-// 	c.cache.remove(key)
-// }
+func (c *Controller) SetSelfUrl(url string) {
+	c.nodePool.url = url
+}
 
-// get all sub
-// func (c *Controller) PublicTopicMsg(topicName, msg string) {
-// 	cache := c.cache.getAll()
-// 	for k, v := range cache {
-// 		if v == topicName {
-// 			go func(k string) {
-// 				_, err := http.Get(k + "/topicCall/" + topicName + "/" + msg)
-// 				if err != nil {
-// 					log.Fatal(err.Error())
-// 					return
-// 				}
-// 			}(k)
-// 		}
-// 	}
+func (c *Controller) Get(key string, reqCode int64) ([]byte, error) {
 
-// }
-func (c *Controller) Get(key string) ([]byte, error) {
 	if key == "" {
 		return nil, fmt.Errorf("key not exist")
 	}
 	if v, ok := c.cache.get(key); ok {
-		log.Printf("key:%s,hit ...", key)
+		zklog.Logger.WithFields(logrus.Fields{
+			"key": key,
+			"msg": "hit...",
+		}).Debug()
 		return []byte(v), nil
 	}
-	log.Printf("key:%s,not hit, load ...", key)
-	return c.load(key)
+	zklog.Logger.WithFields(logrus.Fields{
+		"key": key,
+		"msg": "not hit, call load() ...",
+	}).Debug()
+	val, err := c.load(key, reqCode)
+	if err != nil {
+		zklog.Logger.WithField("err", err).Warn()
+	}
+	return val, err
 }
 
-func (c *Controller) UpdateNodePool(nodes []string) {
-	// TODO update
-	c.nodePool.nodes = nodes
-}
-
-var serviceName = registry.ServiceName("cache")
-
-func (c *Controller) load(key string) ([]byte, error) {
+func (c *Controller) load(key string, reqCode int64) ([]byte, error) {
 	c.nodePool.mu.Lock()
-	defer c.nodePool.mu.Unlock()
+	code := reqCode
+	if code == 0 {
+		code = time.Now().UnixNano()
+	}
+	if recordCodeList, exist := c.reqRemoteMap[Key(key)]; exist {
+		for _, recordCode := range recordCodeList {
+			if recordCode == code {
+				c.nodePool.mu.Unlock()
+				return nil, errors.New("二次环形访问...")
+			}
+		}
+	}
+	c.reqRemoteMap[Key(key)] = append(c.reqRemoteMap[Key(key)], code)
 	localNode := 0
 	for i := 0; i < len(c.nodePool.nodes); i++ {
 		if c.nodePool.url == c.nodePool.nodes[i] {
@@ -111,60 +114,73 @@ func (c *Controller) load(key string) ([]byte, error) {
 			break
 		}
 	}
-	remoteNode := localNode + 1
+	remoteNode := (localNode + 1) % len(c.nodePool.nodes)
 	for remoteNode != localNode {
-		if remoteNode > len(c.nodePool.nodes) {
-			remoteNode = 0
-		}
+		zklog.Logger.WithFields(logrus.Fields{
+			"remoteNode_index":  remoteNode,
+			"localNode_index: ": localNode,
+		}).Debug()
 		remoteUrl := c.nodePool.nodes[remoteNode]
-		viewi, err := c.loader.Do(key, func() ([]byte, error) {
-			log.Println(remoteUrl)
-			if value, err := c.getFromPeer(remoteUrl, key); err != nil {
+		c.nodePool.mu.Unlock()
+		view, err := c.loader.Do(key, code, func() ([]byte, error) {
+			zklog.Logger.WithField("remoteUrl", remoteUrl).Debug()
+			if value, err := c.getFromPeer(remoteUrl, key, code); err != nil {
 				return nil, err
 			} else {
 				return value, nil
 			}
 		})
+
 		if err != nil {
 			// 忽略错误 继续循环
-			log.Println("[getRemoteUrlErr -> 可能是节点突然挂了] err: ", err)
+			zklog.Logger.WithFields(logrus.Fields{
+				"msg": "可能是节点突然挂了 || 或者是二次环形访问  ..... ",
+				"err": err.Error(),
+			}).Warn("Controller request to remote:")
 		} else {
-			return viewi, nil
+			value := ValueResp{}
+			json.Unmarshal(view, &value)
+			zklog.Logger.WithFields(logrus.Fields{
+				"data": value.Data,
+			}).Info()
+			c.cache.set(key, value.Data)
+			return []byte(value.Data), nil
 		}
-		remoteNode++
+		c.nodePool.mu.Lock()
+		remoteNode = (remoteNode + 1) % len(c.nodePool.nodes)
 	}
 	// 如果所有节点都不存在->访问设定的DB
 	data, err := c.getLocalhost(key)
+
+	// 移除http环形访问标志
+	for i, recordCode := range c.reqRemoteMap[Key(key)] {
+		if code == recordCode {
+			c.reqRemoteMap[Key(key)] = append(c.reqRemoteMap[Key(key)][:i], c.reqRemoteMap[Key(key)][i:]...)
+			break
+		}
+	}
+	if len(c.reqRemoteMap[Key(key)]) == 0 {
+		delete(c.reqRemoteMap, Key(key))
+	}
+
+	c.nodePool.mu.Unlock()
 	if err != nil {
-		log.Println(err)
+		zklog.Logger.WithField("err", err).Warn()
 		return nil, errors.New("can not find the value by key: " + key)
 	}
 	return data, nil
+}
 
-	// viewi, err := c.loader.Do(key, func() ([]byte, error) {
-	// 	// 应该从本地的pool中获取
-	// 	PickFormPool
-	// 	c.nodePool.coreUrl
-	// 	if reliableUrl, err := service.GetService(serviceName); err != nil {
-	// 		fmt.Println("err: ", err)
-	// 		return nil, err
-	// 	} else {
-	// 		if value, err := c.getFromPeer(reliableUrl, key); err == nil {
-	// 			return value, nil
-	// 		}
-	// 	}
-	// 	return c.getLocalhost(key)
-	// })
-	// if err == nil {
-	// 	return viewi, nil
-	// }
-
-	// return nil, errors.New("can not find the value by key: " + key)
+// {"code":200,"data":"value","msg":"success"}
+type ValueResp struct {
+	Code int    `json:"code"`
+	Msg  string `json:"msg"`
+	Data string `json:"data"` // value
 }
 
 // 向远程发起请求
-func (c *Controller) getFromPeer(baseUrl string, key string) ([]byte, error) {
-	if value, err := c.nodePool.Get(baseUrl, c.name, key); err != nil {
+func (c *Controller) getFromPeer(baseUrl string, key string, code int64) ([]byte, error) {
+	if value, err := c.nodePool.Get(baseUrl, c.name, key, code); err != nil {
 		return nil, err
 	} else {
 		return value, nil
@@ -173,17 +189,20 @@ func (c *Controller) getFromPeer(baseUrl string, key string) ([]byte, error) {
 
 // 按照设定的规则->search DB
 func (c *Controller) getLocalhost(key string) ([]byte, error) {
-	log.Println("try to search DB")
+	zklog.Logger.WithField("msg", "try to search [Data Source]").Debug()
 	value, err := c.get(key)
 	if err != nil {
-		log.Println("search [DB] fail ,not hit ...")
+		zklog.Logger.WithFields(logrus.Fields{
+			"msg": "[Data Source] not hit........",
+			"key": key,
+			"err": err.Error(),
+		}).Warn()
 		return nil, err
 	}
-	log.Println("search [DB] success ,hit ...")
+	zklog.Logger.WithFields(logrus.Fields{
+		"msg": "[Data Source] hit........",
+		"key": key,
+	}).Debug()
 	c.cache.set(key, value)
 	return []byte(value), nil
 }
-
-// func (c *Controller) RegisterPeers(nodePool *NodePool) {
-// 	c.nodePool = nodePool
-// }

@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"strings"
 	"sync"
@@ -28,8 +27,6 @@ type registry struct {
 	registration map[ServiceName][]string // sericeName:[]string || 服务名:URLS
 	mutex        *sync.RWMutex
 	virtualNode  map[ServiceName]*consistenthash.Map
-	// 负载均衡
-	// Notify 当注册中心易主后通知所有服务
 }
 
 var selfReg = registry{
@@ -55,7 +52,7 @@ func addService(ctx *gin.Context) {
 	ctx.ShouldBind(&r)
 	err := valid.Verification.Verify(r)
 	if err != nil {
-		zklog.Logger.Error(err)
+		zklog.Logger.WithField("err", err).Error()
 		response.ResponseMsg.FailResponse(ctx, err, nil)
 		return
 	}
@@ -66,7 +63,7 @@ func addService(ctx *gin.Context) {
 
 	err = selfReg.add(r)
 	if err != nil {
-		zklog.Logger.Error(err)
+		zklog.Logger.WithField("err", err).Error()
 		response.ResponseMsg.FailResponse(ctx, err, nil)
 		return
 	}
@@ -79,7 +76,7 @@ func removeService(ctx *gin.Context) {
 	ctx.ShouldBind(&r)
 	err := valid.Verification.Verify(r)
 	if err != nil {
-		zklog.Logger.Error(err)
+		zklog.Logger.WithField("err", err).Error()
 		response.ResponseMsg.FailResponse(ctx, err, nil)
 		return
 	}
@@ -87,7 +84,7 @@ func removeService(ctx *gin.Context) {
 	zklog.Logger.Info("Remove service at URL:", url)
 	err = selfReg.remove(r)
 	if err != nil {
-		zklog.Logger.Error(err)
+		zklog.Logger.WithField("err", err).Error()
 		response.ResponseMsg.FailResponse(ctx, err, nil)
 		return
 	}
@@ -206,43 +203,40 @@ func removeUrls(removeUrlsMap map[ServiceName][]string) {
 
 }
 
-// TODO
 func updateNodesMsg(serviceName ServiceName) {
 	urls := selfReg.virtualNode[serviceName].GetUrlsSortByKey()
-	fmt.Println(urls)
+	zklog.Logger.WithField("urls", urls).Debug()
 	for _, url := range urls {
 		data := make(map[string][]string)
 		data["urls"] = urls
 		jsonData, err := json.Marshal(data)
 		if err != nil {
-			log.Println(err)
+			zklog.Logger.WithField("err", err).Error()
 		}
-		log.Println(string(jsonData))
-		// TODO http req
-		// url := "http://url"  || 目标节点
+
 		method := "GET"
 		payload := strings.NewReader(string(jsonData))
 		client := &http.Client{}
 		req, err := http.NewRequest(method, url+"/updateNodePool", payload)
 
 		if err != nil {
-			fmt.Println(err)
+			zklog.Logger.WithField("err", err).Error()
 			return
 		}
 		req.Header.Add("Content-Type", "application/json")
 		res, err := client.Do(req)
 		if err != nil {
-			fmt.Println(err)
+			zklog.Logger.WithField("err", err).Error()
 			return
 		}
 		defer res.Body.Close()
 
 		body, err := ioutil.ReadAll(res.Body)
 		if err != nil {
-			fmt.Println(err)
+			zklog.Logger.WithField("err", err).Error()
 			return
 		}
-		fmt.Println(string(body))
+		zklog.Logger.WithField("send update msg response data", string(body)).Debug()
 	}
 
 }
@@ -253,7 +247,7 @@ func getService(ctx *gin.Context) {
 	ctx.ShouldBind(&r)
 	err := valid.Verification.Verify(r)
 	if err != nil {
-		zklog.Logger.Error(err)
+		zklog.Logger.WithField("err", err).Error()
 		response.ResponseMsg.FailResponse(ctx, err, nil)
 		return
 	}
@@ -276,7 +270,7 @@ func getService(ctx *gin.Context) {
 		"counts": len(selfReg.registration[r.ServiceName]),
 	}).Info("Selected Instance:", url)
 	if err != nil {
-		zklog.Logger.Error(err)
+		zklog.Logger.WithField("err", err).Error()
 		response.ResponseMsg.FailResponse(ctx, err, nil)
 		return
 	}

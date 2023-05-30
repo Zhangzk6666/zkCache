@@ -4,7 +4,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"log"
 	"net/http"
 	zkcache "zkCache"
 	"zkCache/pkg/response"
@@ -13,6 +12,7 @@ import (
 	"zkCache/zklog"
 
 	"github.com/gin-gonic/gin"
+	"github.com/unknwon/com"
 )
 
 var db = map[string]string{
@@ -24,23 +24,23 @@ var db = map[string]string{
 
 func createGroup() *zkcache.Controller {
 	return zkcache.NewController("scores", 2<<10, func(key string) (string, error) {
-		log.Println("[DB] search key", key)
+		zklog.Logger.WithField("msg", fmt.Sprintf("[Data Source] search key: %v", key)).Debug()
 		if v, ok := db[key]; ok {
-			log.Println("[DB] search success", key)
+			zklog.Logger.WithField("msg", fmt.Sprintf("[Data Source]  search success, key: %v", key)).Debug()
 			return v, nil
 		}
-		log.Println("[DB] search failed", key)
-
+		zklog.Logger.WithField("msg", fmt.Sprintf("[Data Source]  search failed, key: %v", key)).Debug()
 		return "", fmt.Errorf("%s not exist", key)
 
 	}, nil)
 }
 
 func getKeyService(router *gin.Engine, controller *zkcache.Controller) {
-	// gee := createGroup()
 	router.GET("/api", func(ctx *gin.Context) {
 		key, _ := ctx.GetQuery("key")
-		view, err := controller.Get(key)
+		code, _ := ctx.GetQuery("code")
+		reqCode := com.StrTo(code).MustInt64()
+		view, err := controller.Get(key, reqCode)
 		if err != nil {
 			response.ResponseMsg.FailResponse(ctx, response.NewErrWithMsg(http.StatusInternalServerError, "服务器错误!"), nil)
 			return
@@ -53,7 +53,6 @@ func getKeyService(router *gin.Engine, controller *zkcache.Controller) {
 var serviceName registry.ServiceName
 
 func main() {
-
 	var port int
 	var api bool
 	var topicName, host string
@@ -79,10 +78,10 @@ func main() {
 	)
 
 	if err != nil {
-		zklog.Logger.Error(err)
+		zklog.Logger.WithField("err", err).Error()
 		panic(err)
 	}
 
 	<-ctx.Done()
-	fmt.Println("shutdown ....")
+	zklog.Logger.WithField("msg", "shutdown ....").Warn()
 }

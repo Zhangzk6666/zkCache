@@ -1,6 +1,8 @@
 package singleflight
 
-import "sync"
+import (
+	"sync"
+)
 
 type call struct {
 	wg  sync.WaitGroup
@@ -14,8 +16,8 @@ type Group struct {
 	m  map[string]*call
 }
 
-// 从其他节点获取对应的结果,如果没有就下一个,直到全部节点都访问完
-func (g *Group) Do(key string, fn func() ([]byte, error)) ([]byte, error) {
+// 并发获取同一个key，除了第一个其他阻塞（当第一个ing时）
+func (g *Group) Do(key string, code int64, fn func() ([]byte, error)) ([]byte, error) {
 	g.mu.Lock()
 	if g.m == nil {
 		g.m = make(map[string]*call)
@@ -29,13 +31,10 @@ func (g *Group) Do(key string, fn func() ([]byte, error)) ([]byte, error) {
 	c.wg.Add(1)
 	g.m[key] = c
 	g.mu.Unlock()
-
 	c.val, c.err = fn()
 	c.wg.Done()
-
 	g.mu.Lock()
 	delete(g.m, key)
 	g.mu.Unlock()
-
 	return c.val, c.err
 }
